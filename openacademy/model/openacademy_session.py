@@ -7,28 +7,41 @@ from openerp import api, exceptions, fields, models, _
 class Session(models.Model):
    _name = 'openacademy.session'
 
+
+   def no_editable_states(self):
+      """ Return the states were the session should not be editable
+      This is used to be the value of the states attribute in the fields
+      model definition.
+      @return: a dictionary key = state, and value = list of attributes that
+      will be activate when the session is in the key-state.
+      """
+      return {
+         'confirmed': [('readonly', True)],
+         'done': [('readonly', True)],
+      }
+
    name = fields.Char(required=True)
-   start_date = fields.Date(default=fields.Date.today)
-   duration = fields.Float(digits=(6, 2), help="Duration in days")
-   seats = fields.Integer(string="Number of seats")
+   start_date = fields.Date(default=fields.Date.today, states=no_editable_states)
+   duration = fields.Float(digits=(6, 2), help="Duration in days", states=no_editable_states)
+   seats = fields.Integer(string="Number of seats", states=no_editable_states)
    instructor_id = fields.Many2one('res.partner', string="Instructor",
                                    domain=['|',
 					("instructor", "=", True),
 					("category_id.name", "ilike", "Teacher"),
-				   ])
+				   ], states=no_editable_states)
    course_id = fields.Many2one('openacademy.course',
-        ondelete='cascade', string="Course", required=True)
-   attendee_ids = fields.Many2many('res.partner', string="Attendees")
+        ondelete='cascade', string="Course", required=True, states=no_editable_states)
+   attendee_ids = fields.Many2many('res.partner', string="Attendees", states=no_editable_states)
    taken_seats = fields.Float(string="Taken seats", compute='_taken_seats',
-                              store=True)
-   active = fields.Boolean(default=True)
+                              store=True, states=no_editable_states)
+   active = fields.Boolean(default=True, states=no_editable_states)
    end_date = fields.Date(string="End Date", store=True,
-        compute='_get_end_date', inverse='_set_end_date')
+        compute='_get_end_date', inverse='_set_end_date', states=no_editable_states)
    hours = fields.Float(string="Duration in hours",
-                         compute='_get_hours', inverse='_set_hours')
+                         compute='_get_hours', inverse='_set_hours', states=no_editable_states)
    attendees_count = fields.Integer(
-        string="Attendees count", compute='_get_attendees_count', store=True)
-   color = fields.Integer()
+        string="Attendees count", compute='_get_attendees_count', store=True, states=no_editable_states)
+   color = fields.Integer(states=no_editable_states)
    state = fields.Selection([
                   	     ('draft', 'Draft'),
 			     ('confirmed', 'Confirmed'),
@@ -103,7 +116,7 @@ class Session(models.Model):
    @api.depends('attendee_ids')
    def _get_attendees_count(self):
       self.attendees_count = len(self.attendee_ids)
-   
+
    @api.one
    def action_draft(self):
        self.state = 'draft'
